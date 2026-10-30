@@ -1,0 +1,24 @@
+import sqlite3
+import os
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+SCHEMA_PATH = os.path.join(BASE_DIR, "schema.sql")
+DB_PATH = os.path.join(BASE_DIR, "interview_system.db")
+
+def init_db():
+    if not os.path.exists(SCHEMA_PATH):
+        raise FileNotFoundError(f"Schema file not found at {SCHEMA_PATH}")
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    with open(SCHEMA_PATH, "r", encoding="utf-8") as f:
+        schema_sql = f.read()
+
+    cursor.executescript(schema_sql)
+    conn.commit()
+    conn.close()
+    print(f"Database initialized successfully at {DB_PATH}")
+
+if __name__ == "__main__":
+    init_db()

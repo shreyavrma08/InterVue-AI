@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Question Staging & Validation - Admin</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
+        body { background-color: #f1f5f9; color: #1e293b; }
+        nav { background-color: #1e3a8a; color: white; padding: 1rem 2rem; }
+        nav a { color: white; text-decoration: none; font-weight: bold; font-size: 1.2rem; }
+        .container { max-width: 1000px; margin: 2rem auto; padding: 0 1rem; }
+        .card { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 1.5rem; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-top: 1rem; }
+        .input-field { padding: 0.6rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.95rem; width: 100%; }
+        .btn { background-color: #1e3a8a; color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .btn:hover { background-color: #1d4ed8; }
+        .btn:disabled { background-color: #94a3b8; cursor: not-allowed; }
+        .error-banner { background-color: #fef2f2; color: #991b1b; border: 1px solid #fecaca; padding: 1rem; border-radius: 6px; margin-bottom: 1rem; display: none; }
+        ul.options-list { margin: 0.5rem 0 1rem 1.5rem; }
+        ul.options-list li { margin-bottom: 0.3rem; }
+    </style>
+</head>
+<body>
+    <nav>
+        <h2><a href="#">AI INTERVIEWER ADMIN</a></h2>
+    </nav>
+
+    <div class="container">
+        <div id="error-box" class="error-banner"></div>
+
+        <div class="card">
+            <h3>Generate Questions via AI Engine</h3>
+            <div class="form-grid">
+                <div>
+                    <label style="font-size:0.85rem; font-weight:bold;">Topic ID</label>
+                    <input type="number" id="topic-id" placeholder="e.g. 4" value="4" class="input-field">
+                </div>
+                <div>
+                    <label style="font-size:0.85rem; font-weight:bold;">Difficulty</label>
+                    <select id="difficulty-select" class="input-field">
+                        <option value="basic">Basic</option>
+                        <option value="intermediate">Intermediate</option>
+                        <option value="advanced">Advanced</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size:0.85rem; font-weight:bold;">Count</label>
+                    <input type="number" id="q-count" value="3" class="input-field">
+                </div>
+                <div style="display:flex; align-items:flex-end;">
+                    <button id="gen-btn" onclick="generateAIQuestions()" class="btn" style="width:100%;">Generate Questions</button>
+                </div>
+            </div>
+        </div>
+
+        <h3>Staged Questions Awaiting Approval</h3>
+        <div id="staged-container" style="margin-top: 1rem;">Loading staged items...</div>
+    </div>
+
+    <!-- Script Import with Fallback -->
+    <script src="../js/main.js"></script>
+    <script>
+        // Fallback in case main.js failed to load
+        if (typeof API_BASE_URL === 'undefined') {
+            var API_BASE_URL = "http://127.0.0.1:8000/api";
+        }
+
+        function showError(msg) {
+            const box = document.getElementById("error-box");
+            box.innerText = msg;
+            box.style.display = "block";
+        }
+
+        function clearError() {
+            const box = document.getElementById("error-box");
+            box.innerText = "";
+            box.style.display = "none";
+        }
+
+        async function generateAIQuestions() {
+            clearError();
+            const topicId = document.getElementById("topic-id").value;
+            const difficulty = document.getElementById("difficulty-select").value;
+            const count = document.getElementById("q-count").value;
+            const genBtn = document.getElementById("gen-btn");
+
+            if (!topicId) {
+                showError("Please enter a valid Topic ID.");
+                return;
+            }
+
+            genBtn.disabled = true;
+            genBtn.innerText = "Generating...";
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/admin/ai/generate`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ 
+                        topic_id: parseInt(topicId), 
+                        difficulty: difficulty, 
+                        num_questions: parseInt(count) 
+                    })
+                });
+
+                if (!res.ok) {
+                    const errData = await res.json();
+                    throw new Error(errData.detail || "Failed to generate questions from API.");
+                }
+
+                alert("Questions successfully generated & staged!");
+                loadStagedQuestions();
+            } catch (err) {
+                showError(`Error: ${err.message}. Ensure FastAPI server (main.py) is running on port 8000.`);
+            } finally {
+                genBtn.disabled = false;
+                genBtn.innerText = "Generate Questions";
+            }
+        }
+
+        async function loadStagedQuestions() {
+            clearError();
+            const container = document.getElementById("staged-container");
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/admin/ai/staged`);
+                if (!res.ok) throw new Error("Failed to reach API server.");
+                
+                const data = await res.json();
+
+                if (!data || data.length === 0) {
+                    container.innerHTML = "<div class='card'><p>No staged questions pending review.</p></div>";
+                    return;
+                }
+
+                container.innerHTML = data.map(q => `
+                    <div class="card" style="border-left: 5px solid ${q.validation_status === 'valid' ? '#10b981' : '#ef4444'};">
+                        <p style="font-size:0.85rem; color:#64748b;">
+                            <strong>Topic:</strong> ${q.topic_name} | <strong>Difficulty:</strong> ${q.difficulty}
+                        </p>
+                        <h4 style="margin: 0.5rem 0;">${q.question_text}</h4>
+                        <ul class="options-list">
+                            ${q.options.map(o => `<li style="color: ${o.is_correct ? '#15803d' : '#334155'}; font-weight: ${o.is_correct ? 'bold' : 'normal'}">${o.text}${o.is_correct ? '✓' : ''}</li>`).join('')}
+                        </ul>
+                        <p style="font-size:0.85rem; color:#475569;"><em>Validation: ${q.validation_status} (${q.validation_reason})</em></p>
+                        <button onclick="approveQuestion(${q.id})" class="btn" style="background:#10b981; margin-top:0.8rem;" ${q.validation_status !== 'valid' ? 'disabled' : ''}>Approve & Save</button>
+                    </div>
+                `).join('');
+            } catch (err) {
+                container.innerHTML = "<div class='card' style='color:#ef4444;'><p>Failed to connect to backend server.</p></div>";
+                showError("Unable to load staged questions. Make sure python main.py is running on http://127.0.0.1:8000.");
+            }
+        }
+
+        async function approveQuestion(id) {
+            clearError();
+            try {
+                const res = await fetch(`${API_BASE_URL}/admin/ai/approve/${id}`, { method: "POST" });
+                if (!res.ok) throw new Error("Approval failed.");
+                
+                alert("Question approved and migrated to active database!");
+                loadStagedQuestions();
+            } catch (err) {
+                showError(err.message);
+            }
+        }
+
+        // Initialize on page load
+        loadStagedQuestions();
+    </script>
+</body>
+</html>

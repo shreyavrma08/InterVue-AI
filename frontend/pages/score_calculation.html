@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Processing Score - AI Interviewer</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .spinner {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid var(--accent-blue);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 2rem auto;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="auth-card" style="text-align: center; margin-top: 10rem;">
+        <div class="spinner"></div>
+        <h2>Processing Your Results...</h2>
+        <p class="sub-header">Calculating Score and generating feedback report...</p>
+    </div>
+
+    <script src="../js/main.js"></script>
+    <script>
+        requireAuth();
+        const urlParams = new URLSearchParams(window.location.search);
+        const rawPayload = urlParams.get("payload");
+
+        async function processAndSubmit() {
+            if (!rawPayload) {
+                window.location.href = "dashboard.html";
+                return;
+            }
+
+            try {
+                const payload = JSON.parse(decodeURIComponent(rawPayload));
+                const res = await fetch(`${API_BASE_URL}/interview/submit`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${getAuthToken()}`
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                const result = await res.json();
+                if (!res.ok) throw new Error("Calculation failed");
+
+                setTimeout(() => {
+                    window.location.href = `result.html?id=${result.interview_id}`;
+                }, 1500);
+            } catch (err) {
+                alert("Error calculating score: " + err.message);
+                window.location.href = "dashboard.html";
+            }
+        }
+
+        processAndSubmit();
+    </script>
+</body>
+</html>

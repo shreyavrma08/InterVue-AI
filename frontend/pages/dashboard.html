@@ -1,0 +1,132 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Candidate Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800">
+    <!-- Navigation Bar -->
+    <nav class="bg-blue-900 text-white px-8 py-4 flex justify-between items-center shadow-md">
+        <h1 class="text-xl font-bold tracking-wide">Interview Prep Portal</h1>
+        <div class="flex items-center gap-4">
+            <span id="nav-username" class="font-medium text-slate-200">Welcome, Candidate</span>
+            <button onclick="logout()" class="bg-red-500 hover:bg-red-600 px-4 py-1.5 rounded-md text-sm font-semibold transition">Logout</button>
+        </div>
+    </nav>
+
+    <div class="max-w-6xl mx-auto p-6 space-y-6">
+        <!-- Header Banner -->
+        <div class="bg-blue-950 text-white p-8 rounded-xl shadow-md">
+            <h2 id="header-greeting" class="text-3xl font-extrabold mb-1">Welcome, Candidate</h2>
+            <p class="text-blue-200">Welcome to your interview preparation space</p>
+        </div>
+
+        <!-- Metrics Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 text-center">
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Progress</p>
+                <p id="stat-progress" class="text-2xl font-bold text-slate-800">0 Modules Completed</p>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 text-center">
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Accuracy Rate</p>
+                <p id="stat-accuracy" class="text-2xl font-bold text-slate-800">0%</p>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 text-center">
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Incorrect Answers</p>
+                <p id="stat-incorrect" class="text-2xl font-bold text-slate-800">0</p>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 text-center">
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Tests Attempted</p>
+                <p id="stat-attempted" class="text-2xl font-bold text-slate-800">0</p>
+            </div>
+        </div>
+
+        <!-- Portal / Subjects Container -->
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+            <h3 class="text-xl font-bold text-blue-950 mb-1">Placement Assessment Portal</h3>
+            <p class="text-slate-500 text-sm mb-6">Select a subject track to view its full syllabus matrix and difficulty-tiered evaluations.</p>
+            
+            <div id="subjects-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <p class="text-slate-400 text-sm">Loading subjects...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function fetchDashboardStats() {
+            try {
+                const res = await fetch('/user/dashboard-stats');
+                if (!res.ok) return;
+                const data = await res.json();
+
+                const name = data.name || data.user_name || "Candidate";
+                document.getElementById('nav-username').textContent = `Hi, ${name}`;
+                document.getElementById('header-greeting').textContent = `Welcome, ${name}`;
+                document.getElementById('stat-progress').textContent = data.progress || "0 Modules Completed";
+                document.getElementById('stat-accuracy').textContent = data.accuracy || "0%";
+                document.getElementById('stat-incorrect').textContent = data.incorrect_answers ?? 0;
+                document.getElementById('stat-attempted').textContent = data.tests_attempted ?? 0;
+            } catch (err) {
+                console.error("Error fetching stats:", err);
+            }
+        }
+
+        async function fetchSubjects() {
+            const container = document.getElementById('subjects-grid');
+            const endpoints = ['/interview/subjects', '/api/subjects', '/subjects'];
+            let subjects = null;
+
+            for (const endpoint of endpoints) {
+                try {
+                    const res = await fetch(endpoint);
+                    if (res.ok) {
+                        subjects = await res.json();
+                        if (Array.isArray(subjects) && subjects.length > 0) {
+                            break;
+                        }
+                    }
+                } catch (err) {
+                    console.error(`Failed to fetch from ${endpoint}:`, err);
+                }
+            }
+
+            if (!subjects || !Array.isArray(subjects) || subjects.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-3 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <p class="text-yellow-800 font-medium">No subjects found in the database.</p>
+                        <p class="text-xs text-yellow-600 mt-1">Please stop the backend server, delete <code>interview_system.db</code>, and re-run <code>python main.py</code> to seed the default subjects.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = subjects.map(sub => `
+                <div class="border border-slate-200 rounded-lg p-5 shadow-sm bg-white hover:shadow-md transition flex flex-col justify-between">
+                    <div>
+                        <h4 class="font-bold text-lg text-blue-900 mb-2">${sub.name}</h4>
+                        <p class="text-xs text-slate-400 mb-4">Subject ID: ${sub.id}</p>
+                    </div>
+                    <button onclick="startAssessment(${sub.id})" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-medium py-2 rounded-md transition text-sm mt-2">
+                        Start Assessment
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function startAssessment(subjectId) {
+            window.location.href = `/pages/assessment.html?subject_id=${subjectId}`;
+        }
+
+        function logout() {
+            window.location.href = '/index.html';
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchDashboardStats();
+            fetchSubjects();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assessment Session</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800">
+    <nav class="bg-blue-900 text-white px-8 py-4 flex justify-between items-center shadow-md">
+        <h1 class="text-xl font-bold tracking-wide">Assessment Session</h1>
+        <button onclick="goBack()" class="bg-slate-700 hover:bg-slate-600 px-4 py-1.5 rounded-md text-sm font-semibold transition">Back to Dashboard</button>
+    </nav>
+
+    <div class="max-w-3xl mx-auto p-6 mt-6">
+        <div id="quiz-container" class="bg-white p-8 rounded-xl shadow-md border border-slate-200">
+            <div id="question-header" class="mb-6 border-b pb-4">
+                <span id="question-count" class="text-xs font-bold text-blue-700 uppercase tracking-wider">Question 1</span>
+                <h2 id="question-text" class="text-xl font-bold text-slate-900 mt-2">Loading questions...</h2>
+            </div>
+
+            <div id="options-container" class="space-y-3">
+                <!-- Options render dynamically -->
+            </div>
+
+            <div class="mt-8 flex justify-end">
+                <button id="next-btn" onclick="nextQuestion()" class="bg-blue-700 hover:bg-blue-800 text-white font-medium px-6 py-2.5 rounded-lg transition">Next Question</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const subjectId = urlParams.get('subject_id') || 1;
+
+        let currentQuestions = [];
+        let currentIndex = 0;
+        let score = 0;
+        let selectedOption = null;
+
+        async function loadQuestions() {
+            try {
+                const res = await fetch(`/interview/questions?subject_id=${subjectId}&count=5`);
+                currentQuestions = await res.json();
+
+                if (!Array.isArray(currentQuestions) || currentQuestions.length === 0) {
+                    document.getElementById('quiz-container').innerHTML = `
+                        <h2 class="text-xl font-bold text-red-600 mb-4">No Questions Available</h2>
+                        <p class="text-slate-600 mb-6">There are no questions configured for this module yet.</p>
+                        <button onclick="goBack()" class="bg-blue-700 text-white px-4 py-2 rounded-md">Return to Dashboard</button>
+                    `;
+                    return;
+                }
+
+                showQuestion();
+            } catch (err) {
+                console.error("Failed to load questions:", err);
+            }
+        }
+
+        function showQuestion() {
+            selectedOption = null;
+            const q = currentQuestions[currentIndex];
+            document.getElementById('question-count').textContent = `Question ${currentIndex + 1} of ${currentQuestions.length}`;
+            document.getElementById('question-text').textContent = q.question_text;
+
+            const options = [
+                { key: 'A', text: q.option_a },
+                { key: 'B', text: q.option_b },
+                { key: 'C', text: q.option_c },
+                { key: 'D', text: q.option_d }
+            ];
+
+            const container = document.getElementById('options-container');
+            container.innerHTML = options.map(opt => `
+                <button onclick="selectOption('${opt.key}', this)" class="option-btn w-full text-left p-4 rounded-lg border border-slate-200 hover:bg-slate-50 transition flex items-center gap-3">
+                    <span class="font-bold text-blue-900 border rounded-full w-7 h-7 flex items-center justify-center text-sm">${opt.key}</span>
+                    <span>${opt.text}</span>
+                </button>
+            `).join('');
+
+            document.getElementById('next-btn').textContent = currentIndex === currentQuestions.length - 1 ? "Submit Assessment" : "Next Question";
+        }
+
+        function selectOption(key, element) {
+            selectedOption = key;
+            document.querySelectorAll('.option-btn').forEach(btn => btn.classList.remove('border-blue-600', 'bg-blue-50'));
+            element.classList.add('border-blue-600', 'bg-blue-50');
+        }
+
+        async function nextQuestion() {
+            if (!selectedOption) {
+                alert("Please select an answer to continue.");
+                return;
+            }
+
+            if (selectedOption === currentQuestions[currentIndex].correct_option) {
+                score++;
+            }
+
+            currentIndex++;
+
+            if (currentIndex < currentQuestions.length) {
+                showQuestion();
+            } else {
+                await submitResults();
+            }
+        }
+
+        async function submitResults() {
+            try {
+                await fetch('/interview/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        subject_id: parseInt(subjectId),
+                        topic_id: currentQuestions[0].topic_id || 1001,
+                        score: score,
+                        total_questions: currentQuestions.length
+                    })
+                });
+
+                document.getElementById('quiz-container').innerHTML = `
+                    <div class="text-center py-6">
+                        <h2 class="text-3xl font-extrabold text-blue-900 mb-2">Assessment Completed!</h2>
+                        <p class="text-lg text-slate-600 mb-6">Your Score: <span class="font-bold text-slate-900">${score} / ${currentQuestions.length}</span></p>
+                        <button onclick="goBack()" class="bg-blue-700 hover:bg-blue-800 text-white font-medium px-6 py-2.5 rounded-lg transition">Back to Dashboard</button>
+                    </div>
+                `;
+            } catch (err) {
+                console.error("Error submitting test:", err);
+            }
+        }
+
+        function goBack() {
+            window.location.href = '/pages/dashboard.html';
+        }
+
+        document.addEventListener('DOMContentLoaded', loadQuestions);
+    </script>
+</body>
+</html>

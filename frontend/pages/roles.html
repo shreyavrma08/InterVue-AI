@@ -1,0 +1,201 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Syllabus & Difficulty Assessments - AI Interviewer</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .category-header {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #3b82f6;
+            color: #1e3a8a;
+            font-size: 1.4rem;
+        }
+        .full-test-banner {
+            background: linear-gradient(135deg, #0f172a, #1e3a8a);
+            color: #ffffff;
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .syllabus-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+            margin-bottom: 2rem;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .syllabus-table th, .syllabus-table td {
+            padding: 0.8rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .syllabus-table th { background: #f1f5f9; color: #1e293b; font-weight: 600; }
+        .badge-btn {
+            display: inline-block;
+            padding: 0.35rem 0.75rem;
+            border-radius: 5px;
+            font-size: 0.82rem;
+            font-weight: bold;
+            color: white;
+            text-decoration: none;
+            transition: transform 0.1s ease, opacity 0.2s ease;
+            cursor: pointer;
+        }
+        .badge-btn:hover { opacity: 0.88; transform: translateY(-1px); }
+        .badge-basic { background: #10b981; }
+        .badge-inter { background: #f59e0b; }
+        .badge-adv { background: #ef4444; }
+        .action-group { display: flex; gap: 0.4rem; }
+    </style>
+</head>
+<body>
+    <nav>
+        <h2><a href="../index.html">AI INTERVIEWER</a></h2>
+        <div id="nav-right"></div>
+    </nav>
+
+    <div class="container">
+        <div id="subject-view">
+            <h2>Placement Assessment Portal</h2>
+            <p class="sub-header">Select a subject track to view its full syllabus matrix and difficulty-tiered evaluations.</p>
+            <div id="categories-container">Loading assessment subjects...</div>
+        </div>
+
+        <div id="topic-view" style="display: none;">
+            <button onclick="showSubjects()" class="btn" style="background: #64748b; margin-bottom: 1rem;">← Back to Subjects</button>
+            <h2 id="selected-subject-title">Subject Syllabus</h2>
+            <p id="selected-subject-desc" class="sub-header"></p>
+
+            <div class="full-test-banner">
+                <div>
+                    <h3 style="margin-bottom: 0.3rem; color: #60a5fa;">Full Placement Assessment (50 Questions)</h3>
+                    <p style="font-size: 0.9rem; opacity: 0.9;">Mixed difficulty assessment: 🟢 Basic (30%) | 🟡 Intermediate (40%) | 🔴 Advanced (30%)</p>
+                </div>
+                <a id="full-placement-btn" href="#" class="btn" style="background: #10b981;">Start Full Assessment</a>
+            </div>
+
+            <h3>Syllabus Topic Matrix & Difficulty Progression</h3>
+            <table class="syllabus-table">
+                <thead>
+                    <tr>
+                        <th>Subtopic Name</th>
+                        <th>Coverage Description</th>
+                        <th>Basic Test</th>
+                        <th>Intermediate Test</th>
+                        <th>Advanced Test</th>
+                        <th>Quick Launch</th>
+                    </tr>
+                </thead>
+                <tbody id="syllabus-tbody">
+                    <tr><td colspan="6">Loading subtopics matrix...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="../js/main.js"></script>
+    <script>
+        requireAuth();
+        let allSubjects = [];
+
+        async function loadSubjects() {
+            const container = document.getElementById("categories-container");
+            try {
+                const res = await fetch(`${API_BASE_URL}/interview/subjects`);
+                allSubjects = await res.json();
+                renderCategories(allSubjects);
+            } catch (err) {
+                container.innerHTML = `<p style="color: red;">Failed to load subjects. Check backend server.</p>`;
+            }
+        }
+
+        function renderCategories(subjects) {
+            const container = document.getElementById("categories-container");
+            const categories = ["Technical Placement", "Sales & Marketing Placement", "Common Skills"];
+            let html = "";
+
+            categories.forEach(cat => {
+                const catSubs = subjects.filter(s => s.category === cat);
+                if (catSubs.length > 0) {
+                    html += `<h3 class="category-header">${cat}</h3><div class="grid-3">`;
+                    catSubs.forEach(sub => {
+                        html += `
+                            <div class="card" style="display: flex; flex-direction: column; justify-content: space-between;">
+                                <div>
+                                    <h3 style="color: var(--primary-blue); margin-bottom: 0.5rem;">${sub.title}</h3>
+                                    <p style="color: #64748b; font-size: 0.88rem; margin-bottom: 1.5rem;">${sub.description}</p>
+                                </div>
+                                <button onclick="selectSubject(${sub.id}, '${encodeURIComponent(sub.title)}', '${encodeURIComponent(sub.description)}')" class="btn">View Syllabus & Assessment</button>
+                            </div>
+                        `;
+                    });
+                    html += `</div>`;
+                }
+            });
+
+            container.innerHTML = html;
+        }
+
+        async function selectSubject(id, title, desc) {
+            document.getElementById("subject-view").style.display = "none";
+            document.getElementById("topic-view").style.display = "block";
+
+            const decodedTitle = decodeURIComponent(title);
+            const decodedDesc = decodeURIComponent(desc);
+
+            document.getElementById("selected-subject-title").innerText = decodedTitle + " Syllabus";
+            document.getElementById("selected-subject-desc").innerText = decodedDesc;
+
+            document.getElementById("full-placement-btn").href = `interview.html?subject_id=${id}&difficulty=ALL&count=50&title=${encodeURIComponent(decodedTitle + ' - Full Placement Assessment')}`;
+
+            const tbody = document.getElementById("syllabus-tbody");
+            try {
+                const res = await fetch(`${API_BASE_URL}/interview/topics/${id}`);
+                const topics = await res.json();
+
+                tbody.innerHTML = topics.map(top => {
+                    const basicUrl = `interview.html?subject_id=${id}&topic_id=${top.id}&difficulty=Basic&count=15&title=${encodeURIComponent(top.title + ' (Basic)')}`;
+                    const interUrl = `interview.html?subject_id=${id}&topic_id=${top.id}&difficulty=Intermediate&count=20&title=${encodeURIComponent(top.title + ' (Intermediate)')}`;
+                    const advUrl = `interview.html?subject_id=${id}&topic_id=${top.id}&difficulty=Advanced&count=15&title=${encodeURIComponent(top.title + ' (Advanced)')}`;
+
+                    return `
+                    <tr>
+                        <td><strong>${top.title}</strong></td>
+                        <td style="color: #64748b; font-size: 0.85rem;">${top.description}</td>
+                        <td><a href="${basicUrl}" class="badge-btn badge-basic">✓ Basic (15 Qs)</a></td>
+                        <td><a href="${interUrl}" class="badge-btn badge-inter">✓ Inter (20 Qs)</a></td>
+                        <td><a href="${advUrl}" class="badge-btn badge-adv">✓ Adv (15 Qs)</a></td>
+                        <td>
+                            <div class="action-group">
+                                <a href="${basicUrl}" class="badge-btn badge-basic">Basic</a>
+                                <a href="${interUrl}" class="badge-btn badge-inter">Inter</a>
+                                <a href="${advUrl}" class="badge-btn badge-adv">Adv</a>
+                            </div>
+                        </td>
+                    </tr>
+                    `;
+                }).join('');
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="6" style="color: red;">Failed to load syllabus topics.</td></tr>`;
+            }
+        }
+
+        function showSubjects() {
+            document.getElementById("subject-view").style.display = "block";
+            document.getElementById("topic-view").style.display = "none";
+        }
+
+        loadSubjects();
+    </script>
+</body>
+</html>

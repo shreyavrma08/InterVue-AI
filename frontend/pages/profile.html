@@ -1,0 +1,95 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - AI Interviewer</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <nav>
+        <h2><a href="../index.html">AI INTERVIEWER</a></h2>
+        <div id="nav-right"></div>
+    </nav>
+
+    <div class="container" style="max-width: 600px;">
+        <h2>User Profile</h2>
+        <p class="sub-header">Manage your personal details and skill specifications</p>
+
+        <form id="profile-form" class="card">
+            <div class="form-group">
+                <label for="name">Name</label>
+                <input type="text" id="name" required>
+            </div>
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" disabled style="background-color: #f1f5f9;">
+            </div>
+            <div class="form-group">
+                <label for="phone">Phone</label>
+                <input type="text" id="phone" placeholder="Enter phone number">
+            </div>
+            <div class="form-group">
+                <label for="education">Education</label>
+                <input type="text" id="education" placeholder="Degree / Institution">
+            </div>
+            <div class="form-group">
+                <label for="skills">Skills</label>
+                <textarea id="skills" rows="3" placeholder="e.g. Python, SQL, React"></textarea>
+            </div>
+            <div id="msg" style="color: green; margin-bottom: 1rem; font-weight: 500;"></div>
+            <button type="submit" class="btn">Update Profile</button>
+        </form>
+    </div>
+
+    <script src="../js/main.js"></script>
+    <script>
+        requireAuth();
+
+        async function loadProfile() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/user/profile`, {
+                    headers: { "Authorization": `Bearer ${getAuthToken()}` }
+                });
+                const data = await res.json();
+
+                document.getElementById("name").value = data.name || localStorage.getItem("full_name") || '';
+                document.getElementById("email").value = data.email || '';
+                document.getElementById("phone").value = data.phone || '';
+                document.getElementById("education").value = data.education || '';
+                document.getElementById("skills").value = data.skills || '';
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        document.getElementById("profile-form").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const payload = {
+                name: document.getElementById("name").value,
+                phone: document.getElementById("phone").value,
+                education: document.getElementById("education").value,
+                skills: document.getElementById("skills").value,
+            };
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/user/profile`, {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${getAuthToken()}`
+                    },
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) throw new Error("Failed to update profile");
+                
+                document.getElementById("msg").innerText = "Profile updated successfully!";
+            } catch (err) {
+                console.error(err);
+            }
+        });
+
+        loadProfile();
+    </script>
+</body>
+</html>

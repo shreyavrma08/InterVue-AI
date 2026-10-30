@@ -1,0 +1,78 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Assessment Results - AI Interviewer</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .score-card { background: linear-gradient(135deg, #1e3a8a, #0f172a); color: white; padding: 2rem; border-radius: 10px; text-align: center; margin-bottom: 2rem; }
+        .metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem; }
+        .metric-card { background: white; padding: 1.2rem; border-radius: 8px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body>
+    <nav>
+        <h2><a href="../index.html">AI INTERVIEWER</a></h2>
+    </nav>
+
+    <div class="container">
+        <div class="score-card">
+            <h1>Assessment Final Results</h1>
+            <h2 id="final-score" style="font-size: 3rem; margin-top: 0.5rem;">0%</h2>
+            <p id="accuracy-rate">Accuracy Rate: 0%</p>
+        </div>
+
+        <div class="metric-grid">
+            <div class="metric-card"><h4>Total Questions</h4><p id="m-total">0</p></div>
+            <div class="metric-card"><h4>Attempted</h4><p id="m-att">0</p></div>
+            <div class="metric-card"><h4>Correct Answers</h4><p id="m-correct" style="color:#10b981; font-weight:bold;">0</p></div>
+            <div class="metric-card"><h4>Unattempted</h4><p id="m-unatt" style="color:#ef4444;">0</p></div>
+        </div>
+
+        <div class="card">
+            <h3>Topic Performance Analysis</h3>
+            <div id="topic-breakdown" style="margin-top: 1rem;"></div>
+        </div>
+
+        <div style="margin-top: 2rem; text-align: center;">
+            <a href="../index.html" class="btn">Return to Dashboard</a>
+        </div>
+    </div>
+
+    <script src="../js/main.js"></script>
+    <script>
+        requireAuth();
+        const assessmentId = new URLSearchParams(window.location.search).get("id");
+
+        async function loadResult() {
+            const res = await fetch(`${API_BASE_URL}/results/${assessmentId}`);
+            const data = await res.json();
+
+            document.getElementById("final-score").innerText = `${Math.round(data.score)}%`;
+            document.getElementById("accuracy-rate").innerText = `Accuracy Rate: ${Math.round(data.accuracy_rate)}%`;
+            document.getElementById("m-total").innerText = data.total;
+            document.getElementById("m-att").innerText = data.attempted;
+            document.getElementById("m-correct").innerText = data.correct;
+            document.getElementById("m-unatt").innerText = data.unattempted;
+
+            const tContainer = document.getElementById("topic-breakdown");
+            tContainer.innerHTML = Object.entries(data.topic_breakdown).map(([topic, stats]) => {
+                const pct = Math.round((stats.correct / stats.total) * 100);
+                return `
+                    <div style="margin-bottom: 1rem;">
+                        <div style="display:flex; justify-size:space-between;">
+                            <strong>${topic}</strong>
+                            <span>${stats.correct}/${stats.total} (${pct}%)</span>
+                        </div>
+                        <div style="background:#e2e8f0; height:8px; border-radius:4px; overflow:hidden; margin-top:0.3rem;">
+                            <div style="background:${pct >= 70 ? '#10b981' : '#ef4444'}; width:${pct}%; height:100%;"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        loadResult();
+    </script>
+</body>
+</html>

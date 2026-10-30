@@ -1,0 +1,227 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assessment Test - AI Placement</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .option-btn {
+            display: block;
+            width: 100%;
+            text-align: left;
+            margin-bottom: 0.75rem;
+            padding: 1rem;
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        .option-btn:hover { background: #f1f5f9; border-color: #cbd5e1; }
+        .option-btn.selected { background: #eff6ff; border-color: #2563eb; color: #1e40af; font-weight: 600; }
+        .q-badge {
+            display: inline-block;
+            padding: 0.25rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <h2><a href="../index.html">AI INTERVIEWER</a></h2>
+        <div id="nav-right"></div>
+    </nav>
+
+    <div class="container" style="max-width: 800px; margin-top: 2rem;">
+        <!-- Test Screen -->
+        <div id="test-screen" class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 1rem; margin-bottom: 1.5rem;">
+                <span id="question-tracker" style="font-weight: 600; color: #64748b;">Question 1 of 15</span>
+                <span id="diff-badge" class="q-badge" style="background: #e0f2fe; color: #0369a1;">Basic</span>
+            </div>
+
+            <h3 id="question-text" style="margin-bottom: 1.5rem; line-height: 1.5; color: #1e293b;">Loading assessment question...</h3>
+
+            <div id="options-container" style="margin-bottom: 2rem;"></div>
+
+            <div style="display: flex; justify-content: space-between; gap: 1rem;">
+                <button onclick="skipQuestion()" class="btn" style="background: #94a3b8;">Skip Question</button>
+                <button id="next-submit-btn" onclick="nextOrSubmit()" class="btn">Next Question</button>
+            </div>
+        </div>
+
+        <!-- Result Screen -->
+        <div id="result-screen" class="card" style="display: none; text-align: center; padding: 3rem 2rem;">
+            <h1 style="color: #1e3a8a; margin-bottom: 0.5rem;">Assessment Completed!</h1>
+            <p style="color: #64748b; margin-bottom: 2rem;">Your test results have been recorded to your database profile.</p>
+
+            <div style="font-size: 3.5rem; font-weight: 800; color: #2563eb; margin-bottom: 2rem;" id="final-percentage">0%</div>
+
+            <div class="grid-3" style="margin-bottom: 2.5rem; text-align: left;">
+                <div class="card" style="padding: 1rem; background: #f8fafc;">
+                    <p style="font-size: 0.85rem; color: #64748b;">Overall Correct</p>
+                    <h3 id="overall-total" style="color: #1e293b;">0 / 0</h3>
+                </div>
+                <div class="card" style="padding: 1rem; background: #f8fafc;">
+                    <p style="font-size: 0.85rem; color: #64748b;">Basic Tier</p>
+                    <h3 id="basic-score" style="color: #1e293b;">0/0</h3>
+                </div>
+                <div class="card" style="padding: 1rem; background: #f8fafc;">
+                    <p style="font-size: 0.85rem; color: #64748b;">Skipped Questions</p>
+                    <h3 id="skipped-score" style="color: #1e293b;">0</h3>
+                </div>
+            </div>
+
+            <a href="../index.html" class="btn" style="padding: 0.8rem 2rem;">Return to Dashboard</a>
+        </div>
+    </div>
+
+    <script src="../js/main.js"></script>
+    <script>
+        requireAuth();
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const subjectId = urlParams.get('subject_id') || 1;
+        const topicId = urlParams.get('topic_id');
+        const difficulty = urlParams.get('difficulty') || 'ALL';
+
+        let questions = [];
+        let currentIndex = 0;
+        let userAnswers = [];
+
+        async function fetchQuestions() {
+            try {
+                let url = `${API_BASE_URL}/interview/questions?subject_id=${subjectId}&difficulty=${difficulty}`;
+                if (topicId) url += `&topic_id=${topicId}`;
+
+                const res = await fetch(url);
+                questions = await res.json();
+
+                if (questions.length === 0) {
+                    alert("No questions available for this module.");
+                    window.location.href = "roles.html";
+                    return;
+                }
+
+                renderQuestion();
+            } catch (err) {
+                console.error("Failed to load questions", err);
+            }
+        }
+
+        function renderQuestion() {
+            const q = questions[currentIndex];
+            document.getElementById('question-tracker').innerText = `Question ${currentIndex + 1} of ${questions.length}`;
+            document.getElementById('diff-badge').innerText = q.difficulty;
+            document.getElementById('question-text').innerText = q.question;
+
+            const optsContainer = document.getElementById('options-container');
+            optsContainer.innerHTML = '';
+
+            Object.entries(q.options).forEach(([key, val]) => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn';
+                btn.innerText = `${key}: ${val}`;
+                btn.onclick = () => selectOption(key, btn);
+                optsContainer.appendChild(btn);
+            });
+
+            const nextBtn = document.getElementById('next-submit-btn');
+            if (currentIndex === questions.length - 1) {
+                nextBtn.innerText = "Submit Assessment";
+                nextBtn.style.background = "#16a34a";
+            } else {
+                nextBtn.innerText = "Next Question";
+                nextBtn.style.background = "#2563eb";
+            }
+        }
+
+        let currentSelectedOption = null;
+
+        function selectOption(key, element) {
+            document.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
+            element.classList.add('selected');
+            currentSelectedOption = key;
+        }
+
+        function skipQuestion() {
+            recordAnswer("SKIPPED");
+            advanceNext();
+        }
+
+        function nextOrSubmit() {
+            if (!currentSelectedOption) {
+                alert("Please select an answer or click Skip Question.");
+                return;
+            }
+            recordAnswer(currentSelectedOption);
+            advanceNext();
+        }
+
+        function recordAnswer(opt) {
+            const q = questions[currentIndex];
+            userAnswers.push({
+                question_id: q.question_id,
+                selected_option: opt,
+                difficulty: q.difficulty
+            });
+            currentSelectedOption = null;
+        }
+
+        function advanceNext() {
+            if (currentIndex < questions.length - 1) {
+                currentIndex++;
+                renderQuestion();
+            } else {
+                submitAssessment();
+            }
+        }
+
+        async function submitAssessment() {
+            const token = localStorage.getItem("token");
+            const payload = {
+                subject_id: parseInt(subjectId),
+                topic_id: topicId ? parseInt(topicId) : null,
+                difficulty: difficulty,
+                answers: userAnswers
+            };
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/interview/submit`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!res.ok) {
+                    throw new Error("Failed to submit results");
+                }
+
+                const result = await res.json();
+
+                document.getElementById('test-screen').style.display = 'none';
+                document.getElementById('result-screen').style.display = 'block';
+
+                document.getElementById('final-percentage').innerText = `${result.percentage}%`;
+                document.getElementById('overall-total').innerText = `${result.overall_score} / ${result.total_questions}`;
+                document.getElementById('basic-score').innerText = result.breakdown.basic;
+                document.getElementById('skipped-score').innerText = result.skipped_questions;
+
+            } catch (err) {
+                alert('Error submitting assessment. Redirecting to dashboard.');
+                window.location.href = '../index.html';
+            }
+        }
+
+        fetchQuestions();
+    </script>
+</body>
+</html>

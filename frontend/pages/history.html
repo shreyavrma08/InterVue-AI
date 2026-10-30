@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interview History - AI Interviewer</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <nav>
+        <h2><a href="../index.html">AI INTERVIEWER</a></h2>
+        <div id="nav-right"></div>
+    </nav>
+
+    <div class="container">
+        <h2>Interview History</h2>
+        <p class="sub-header">Review your past performance and evaluation records</p>
+
+        <div id="history-container" style="margin-top: 1.5rem;">
+            Loading past records...
+        </div>
+    </div>
+
+    <script src="../js/main.js"></script>
+    <script>
+        requireAuth();
+
+        async function loadHistory() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/interview/history`, {
+                    headers: { "Authorization": `Bearer ${getAuthToken()}` }
+                });
+                const history = await res.json();
+                const container = document.getElementById("history-container");
+
+                if (!history || history.length === 0) {
+                    container.innerHTML = `<div class="card"><p>No past interviews found.</p></div>`;
+                    return;
+                }
+
+                container.innerHTML = history.map(item => `
+                    <div class="history-item">
+                        <div>
+                            <strong style="font-size: 1.1rem; color: var(--primary-blue);">${item.role_title || 'Technical Track'}</strong>
+                            <div style="color: #64748b; font-size: 0.85rem; margin-top: 0.25rem;">Completed on: ${new Date(item.created_at).toLocaleDateString()}</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <span style="background: #e0f2fe; color: #0369a1; padding: 0.3rem 0.6rem; border-radius: 6px; font-weight: bold; font-size: 0.9rem;">
+                                Score: ${item.score}/${item.total_questions}
+                            </span>
+                            <div style="margin-top: 0.5rem;">
+                                <a href="result.html?id=${item.id}" style="color: var(--accent-blue); font-size: 0.85rem; text-decoration: none;">View Details →</a>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (err) {
+                console.error(err);
+                document.getElementById("history-container").innerText = "Failed to load history.";
+            }
+        }
+
+        loadHistory();
+    </script>
+</body>
+</html>

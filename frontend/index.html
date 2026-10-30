@@ -1,0 +1,96 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - AI Placement Assessment Platform</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <nav>
+        <h2><a href="index.html">AI INTERVIEWER</a></h2>
+        <div id="nav-right"></div>
+    </nav>
+
+    <div class="container">
+        <div class="card" style="background: linear-gradient(135deg, #1e3a8a, #0f172a); color: white; padding: 2rem; margin-bottom: 2rem;">
+            <h1 id="welcome-title">Welcome</h1>
+            <p style="opacity: 0.85; margin-top: 0.5rem;">Welcome to your interview preparation space</p>
+        </div>
+
+        <div class="grid-4" style="margin-bottom: 2rem;">
+            <div class="card" style="text-align: center; padding: 1.5rem;">
+                <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 0.5rem;">Progress</p>
+                <h2 id="stat-progress" style="font-size: 2.2rem; color: #1e293b;">0</h2>
+            </div>
+            <div class="card" style="text-align: center; padding: 1.5rem;">
+                <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 0.5rem;">Accuracy Rate</p>
+                <h2 id="stat-accuracy" style="font-size: 2.2rem; color: #1e293b;">0%</h2>
+            </div>
+            <div class="card" style="text-align: center; padding: 1.5rem;">
+                <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 0.5rem;">Incorrect Answers</p>
+                <h2 id="stat-incorrect" style="font-size: 2.2rem; color: #1e293b;">0</h2>
+            </div>
+            <div class="card" style="text-align: center; padding: 1.5rem;">
+                <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 0.5rem;">Tests Attempted</p>
+                <h2 id="stat-tests" style="font-size: 2.2rem; color: #1e293b;">0</h2>
+            </div>
+        </div>
+
+        <div class="grid-3">
+            <div class="card" style="text-align: center; display: flex; flex-direction: column; justify-content: space-between; padding: 2rem;">
+                <div>
+                    <h3 style="color: #1e3a8a; margin-bottom: 0.5rem;">Start New Assessment</h3>
+                    <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 1.5rem;">Select subject tracks and evaluate core placement knowledge.</p>
+                </div>
+                <a href="pages/roles.html" class="btn" style="display: block;">Start Now</a>
+            </div>
+
+            <div class="card" style="text-align: center; display: flex; flex-direction: column; justify-content: space-between; padding: 2rem;">
+                <div>
+                    <h3 style="color: #1e3a8a; margin-bottom: 0.5rem;">View History</h3>
+                    <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 1.5rem;">Track previous test scores, question breakdown, and detailed evaluations.</p>
+                </div>
+                <button class="btn" style="background: #cbd5e1; color: #475569; cursor: not-allowed;" disabled>View History</button>
+            </div>
+
+            <div class="card" style="text-align: center; display: flex; flex-direction: column; justify-content: space-between; padding: 2rem;">
+                <div>
+                    <h3 style="color: #1e3a8a; margin-bottom: 0.5rem;">User Profile</h3>
+                    <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 1.5rem;">Update your education, technical skills, and account settings.</p>
+                </div>
+                <button class="btn" style="background: #cbd5e1; color: #475569; cursor: not-allowed;" disabled>Manage Profile</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/main.js"></script>
+    <script>
+        requireAuth();
+
+        async function fetchDashboardStats() {
+            const token = localStorage.getItem("token");
+            try {
+                const res = await fetch(`${API_BASE_URL}/user/dashboard-stats`, {
+                    headers: {
+                        "Authorization": `Bearer ${token}`
+                    }
+                });
+
+                if (res.ok) {
+                    const stats = await res.json();
+                    document.getElementById("welcome-title").innerText = `Welcome, ${stats.full_name}`;
+                    document.getElementById("stat-progress").innerText = stats.progress;
+                    document.getElementById("stat-accuracy").innerText = stats.accuracy_rate;
+                    document.getElementById("stat-incorrect").innerText = stats.incorrect_answers;
+                    document.getElementById("stat-tests").innerText = stats.tests_attempted;
+                }
+            } catch (err) {
+                console.error("Failed to load dashboard statistics:", err);
+            }
+        }
+
+        fetchDashboardStats();
+    </script>
+</body>
+</html>
